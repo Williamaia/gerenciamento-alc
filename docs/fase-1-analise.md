@@ -107,13 +107,22 @@ A aprovação destas specs confirma as decisões abaixo.
 16. O aviso de dias sem escala lista os dias corridos do período, inclusive fim de semana.
 17. Backup lógico diário, retenção inicial de 30 dias, sem restauração automática.
 18. `/ajustar rotas=0` zera rotas completas. Se não restar compartilhada, o dia fica não escalado.
+19. O grupo de origem, só para leitura das escalas, é ALC SANTO ANTÔNIO DA PLATINA EPR7 MOTORISTAS. Nenhuma mensagem é enviada para ele.
+20. O relatório diário sai no grupo Gerenciamento ALC IA.
+21. O WhatsApp do Douglas é 55 65 9960-7901. Esse mesmo número recebe o faturamento no dia 15 e no último dia do mês, e também o pedido diário de paradas.
+22. O ganho diário da Fiorino segue a tabela de frete do utilitário em Santo Antônio da Platina, guardada em `docs/referencias/tabela-frete-utilitario.png`. A faixa usa a quilometragem de ida e volta: até 100 km, R$ 235,00; 101 a 150, R$ 260,00; 151 a 200, R$ 305,00; 201 a 250, R$ 335,00; 251 a 300, R$ 355,00; acima de 300, R$ 380,00. A bonificação por parada é progressiva: R$ 0,35 até a 60ª, R$ 1,90 da 61ª à 90ª e R$ 0,90 da 91ª em diante. Duas ou mais encomendas no mesmo lugar contam como uma parada, e só entra parada entregue. O bônus de treinamento é R$ 5,00 por rota somente com aderência concluída de pelo menos 95%. Esse ganho não se soma ao pagamento do motorista.
+23. O combustível padrão é R$ 90,00 por dia. O lucro do dia é o ganho da Fiorino menos o pagamento do motorista, o combustível e as manutenções. Para mudar o combustível de um dia: `/ajustar combustivel=80 data=17/11`. Sem data, o comando vale para a operação já resolvida.
+24. A data da escala é a data escrita no texto que acompanha a imagem. A frase ao redor pode mudar. "Segue a escala 17/11" é só um exemplo, não um texto obrigatório.
+25. Manutenção: `/manutencao "Troca de Óleo" 200,00`. Com parecer já publicado, a mensagem do grupo é editada. Em dia sem rota, o grupo de controle recebe somente a manutenção. No fechamento, o grupo de controle recebe o relatório da quinzena da Fiorino, com cada dia, a soma dos ganhos, os pagamentos do motorista já líquidos de PNR, abastecimentos, manutenções e lucro.
+26. O demonstrativo do Douglas lista cada dia da quinzena e a soma. Dia sem rota aparece com valor zero. PNR é pacote perdido ou entregue errado. O administrador só fica sabendo quando recebe o faturamento da ALC e então envia `/pnr 30,00` no grupo de controle. O desconto vale para a quinzena desse faturamento. O valor de cada rota não muda. Se a quinzena já estiver fechada, sai uma versão nova e a anterior não é somada.
+27. Às 08:00 o frota-plus-agent pede as paradas ao Douglas e só guarda a resposta. Não responde mais nada nessa conversa. O parecer sai no grupo de controle. O demonstrativo da quinzena continua sendo enviado no dia 15 e no último dia.
+28. A quilometragem de cada cidade é a ida e a volta a partir de Santo Antônio da Platina, consultadas separadas. Congonhinhas fica em 73 km e 73 km. Cidade nova é buscada na hora e guardada. Várias cidades na rota, ou em rotas do mesmo dia, somam cidade por cidade. Se faltar a distância de uma cidade, o dia inteiro fica pendente.
 
 ## Pendências que não impedem a spec
 
 Não estão no repositório e não devem ser inventadas:
 
-- Números do administrador e do Douglas.
-- Identificadores dos grupos de origem e de controle.
+- Número do administrador.
 - Identificação da primeira Fiorino e do ponto exato do barracão.
 - Tabela inicial de trevos e distâncias.
 - URL, instância e versão da Evolution API que será usada.

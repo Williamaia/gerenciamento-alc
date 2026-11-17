@@ -1,16 +1,51 @@
 """Serviço HTTP do Frota Plus."""
 
+import asyncio
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 
 from frota_plus.config import Settings, get_settings
+from frota_plus.interpreter import OpenAIInterpreter
+from frota_plus.outbound import EvolutionOutbound, Outbound
+from frota_plus.schedule import run_schedule
+from frota_plus.service import DailyService
+from frota_plus.store import Store
 from frota_plus.webhooks.evolution import WEBHOOK_PATH, register_evolution_webhook
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    outbound: Outbound | None = None,
+    interpreter=None,
+    store: Store | None = None,
+) -> FastAPI:
     current = settings or get_settings()
-    app = FastAPI(title="Frota Plus", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        task = asyncio.create_task(run_schedule(app))
+        yield
+        task.cancel()
+
+    app = FastAPI(title="Frota Plus", version="0.1.0", lifespan=lifespan)
     app.state.settings = current
     app.state.seen_message_ids = set()
+    app.state.store = store or Store(Path(current.data_path) if current.data_path else None)
+    app.state.outbound = outbound or EvolutionOutbound(
+        current.evolution_api_base_url,
+        current.evolution_api_key,
+        current.evolution_instance,
+    )
+    app.state.interpreter = interpreter or OpenAIInterpreter(current.ai_api_key, current.ai_model)
+    app.state.service = DailyService(
+        current,
+        app.state.store,
+        app.state.outbound,
+        app.state.interpreter,
+    )
 
     @app.get("/health")
     def health() -> dict[str, str | bool]:

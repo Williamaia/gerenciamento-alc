@@ -76,7 +76,7 @@ Se a operação aguardar confirmação, o sistema SHALL publicar que o resultado
 
 **Tipo**: Regra de negócio
 
-O PDF SHALL conter somente o demonstrativo de pagamento do motorista: título, nome, período, tabela de data, rota, tipo e valor, quantidade de rotas completas, quantidade de rotas compartilhadas, dias trabalhados e total a receber. Valores SHALL estar em reais.
+O PDF SHALL listar cada dia da quinzena, com rota, tipo e valor. Dia sem rota SHALL aparecer como sem rota e valor zero. O total a receber SHALL ser a soma das rotas menos as PNR do período. O documento SHALL trazer as quantidades, os dias trabalhados e o total.
 
 #### Scenario: Período com três linhas
 
@@ -97,14 +97,15 @@ O PDF SHALL conter somente o demonstrativo de pagamento do motorista: título, n
 
 **Tipo**: Regra de negócio
 
-O PDF MUST NOT apresentar faturamento bruto, faturamento da ALC, receita diária, lucro, custo do veículo, pagamento de outro motorista, remuneração por paradas ou dia não escalado.
+O PDF MUST NOT apresentar faturamento bruto, faturamento da ALC, receita diária, lucro, custo do veículo, pagamento de outro motorista ou remuneração por paradas. Dia sem rota SHALL constar na lista e MUST NOT aumentar o total.
 
-#### Scenario: Dia não escalado no período
+#### Scenario: Dia sem rota no período
 
-- **GIVEN** um período com dias pagáveis e um dia não escalado de R$ 0,00
+- **GIVEN** uma quinzena com um dia de rota e os demais sem rota
 - **WHEN** o PDF é gerado
-- **THEN** o dia não escalado não aparece como linha
-- **AND** o total não depende desse zero
+- **THEN** todos os dias do período aparecem
+- **AND** o dia sem rota entra com valor zero
+- **AND** o total é só a soma das rotas menos as PNR
 
 #### Scenario: Indicador de paradas existente
 
@@ -191,6 +192,44 @@ Dia sem escala recebida MUST NOT ser convertido em ausência nem bloquear, sozin
 - **GIVEN** uma imagem de escala do período já recebida e ainda sem resultado confirmado
 - **WHEN** o fechamento é disparado
 - **THEN** a consolidação fica bloqueada
+
+### Requirement: PNR na quinzena do motorista
+
+**Tipo**: Regra de negócio
+
+PNR SHALL ser pacote perdido ou entregue errado, em reais, informado só quando chegar o faturamento da ALC. A soma das rotas SHALL permanecer. O total a receber SHALL ser essa soma menos as PNR. Se o período já estiver fechado, SHALL sair nova versão, sem somar com a anterior.
+
+#### Scenario: Desconto sobre a soma
+
+- **GIVEN** rotas da quinzena somando R$ 100,00 e uma PNR de R$ 30,00
+- **WHEN** o demonstrativo é fechado
+- **THEN** a soma das rotas permanece R$ 100,00
+- **AND** o total a receber é R$ 70,00
+
+### Requirement: Lucro do dia
+
+**Tipo**: Regra de negócio
+
+O lucro do dia SHALL ser o ganho da Fiorino menos o pagamento do motorista, o combustível e as manutenções desse dia.
+
+#### Scenario: Dia com manutenção
+
+- **GIVEN** ganho da Fiorino de R$ 277,25, pagamento do motorista de R$ 100,00, combustível de R$ 90,00 e manutenção de R$ 200,00
+- **WHEN** o lucro do dia é calculado
+- **THEN** o lucro é R$ 112,75 negativo
+
+### Requirement: Relatório da Fiorino na quinzena
+
+**Tipo**: Requisito funcional
+
+Ao fechar a quinzena, o sistema SHALL enviar ao grupo de controle cada dia do período, a soma dos ganhos da Fiorino, os pagamentos do motorista já líquidos de PNR, os abastecimentos, as manutenções e o lucro. O lucro SHALL descontar esses três itens dos ganhos.
+
+#### Scenario: Fechamento do período
+
+- **GIVEN** uma quinzena com ganhos, pagamentos diários, abastecimentos e manutenções já registrados
+- **WHEN** o fechamento desse período é concluído
+- **THEN** o grupo de controle recebe o relatório com esses totais e o lucro
+- **AND** o relatório sai no dia 15 e no último dia do mês
 
 ### Requirement: Idempotência do fechamento
 

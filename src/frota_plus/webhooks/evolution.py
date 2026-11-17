@@ -88,6 +88,11 @@ def register_evolution_webhook(app: FastAPI) -> None:
             identifier or "",
             duplicate,
         )
+        if not duplicate:
+            try:
+                request.app.state.service.handle(payload)
+            except Exception:
+                logger.exception("falha_ao_processar_evento")
         return JSONResponse(
             status_code=200,
             content={"accepted": True, "duplicate": duplicate},

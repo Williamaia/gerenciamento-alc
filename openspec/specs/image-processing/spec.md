@@ -23,7 +23,7 @@ O processamento lê a tabela, associa cidades à rota correta e devolve campos c
 
 **Tipo**: Regra de negócio
 
-O sistema SHALL usar como data da operação a data explícita no texto da mesma mensagem da imagem. MUST NOT substituir essa data pela data de recebimento.
+O sistema SHALL usar como data da operação a data explícita no texto da mesma mensagem da imagem, qualquer que seja a frase ao redor. MUST NOT exigir um texto fixo nem substituir essa data pela data de recebimento.
 
 #### Scenario: Escala recebida no dia seguinte
 
@@ -32,6 +32,14 @@ O sistema SHALL usar como data da operação a data explícita no texto da mesma
 - **WHEN** a data é interpretada
 - **THEN** a data proposta da operação é 17/11/2026
 - **AND** 18/11/2026 não é gravada como data da operação
+
+#### Scenario: Outra redação com data
+
+- **GIVEN** uma imagem recebida em 17/11/2026
+- **AND** o texto da mesma mensagem é "escala de amanhã 18/11"
+- **WHEN** a data é interpretada
+- **THEN** a data proposta da operação é 18/11/2026
+- **AND** o sistema não exige a frase "Segue a escala"
 
 #### Scenario: Ano explícito
 

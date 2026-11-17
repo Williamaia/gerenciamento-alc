@@ -8,6 +8,7 @@ coverage/
 tmp/
 storage/
 backups/
+data/
 .DS_Store
 Thumbs.db
 .venv/

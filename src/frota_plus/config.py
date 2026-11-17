@@ -1,5 +1,6 @@
 """Configuração lida do ambiente. Segredos não têm valor padrão."""
 
+from decimal import Decimal
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -20,6 +21,21 @@ class Settings(BaseSettings):
     ai_model: str = ""
     ai_api_key: str = ""
     default_timezone: str = "America/Sao_Paulo"
+    evolution_api_base_url: str = ""
+    evolution_api_key: str = ""
+    evolution_instance: str = ""
+    whatsapp_admin_numbers: str = ""
+    whatsapp_origin_group_id: str = ""
+    whatsapp_control_group_id: str = ""
+    whatsapp_billing_number: str = ""
+    whatsapp_driver_number: str = ""
+    driver_name: str = "Douglas"
+    fuel_daily_amount: str = "90"
+    data_path: str = "data/frota.json"
+
+    @property
+    def fuel_default(self) -> Decimal:
+        return Decimal(self.fuel_daily_amount.replace(",", "."))
 
     @property
     def webhook_path(self) -> str:

@@ -117,6 +117,69 @@ O comando de paradas SHALL definir a quantidade inteira do dia. O comando de qui
 - **THEN** a quilometragem do dia fica 180 km com origem manual
 - **AND** a tabela de distâncias não muda
 
+### Requirement: Ajuste de combustível
+
+**Tipo**: Requisito funcional
+
+O comando SHALL definir o combustível em reais de um dia. Sem data, SHALL aplicar o valor à operação já resolvida. O combustível do dia começa em R$ 90,00. O comando MUST NOT alterar o pagamento do motorista.
+
+#### Scenario: Combustível do dia resolvido
+
+- **GIVEN** o comando autorizado "/ajustar combustivel=90" na operação de 17/11/2026
+- **WHEN** ele é executado
+- **THEN** o combustível desse dia fica R$ 90,00
+- **AND** o lucro do dia é recalculado
+
+#### Scenario: Combustível de outra data
+
+- **GIVEN** o comando autorizado "/ajustar combustivel=80 data=18/11"
+- **WHEN** ele é executado
+- **THEN** somente 18/11/2026 passa a R$ 80,00 de combustível
+- **AND** 17/11/2026 permanece com o valor que já tinha
+
+### Requirement: Manutenção
+
+**Tipo**: Requisito funcional
+
+O comando `/manutencao`, com ou sem acento, SHALL registrar descrição e valor em reais. Sem data, SHALL usar o dia já resolvido. Se o parecer desse dia já foi publicado, SHALL editar essa mensagem e recalcular o lucro. Se o dia não tiver rota, SHALL publicar no grupo de controle somente a manutenção.
+
+#### Scenario: Manutenção em dia com rota
+
+- **GIVEN** o comando autorizado `/manutencao "Troca de Óleo" 200,00` em 17/11/2026
+- **AND** o parecer desse dia já está no grupo de controle
+- **WHEN** ele é executado
+- **THEN** a mensagem publicada é editada e passa a incluir Troca de Óleo por R$ 200,00
+- **AND** o lucro do dia desconta esses R$ 200,00
+
+#### Scenario: Manutenção em dia sem rota
+
+- **GIVEN** o comando autorizado `/manutencao "Troca de Óleo" 200,00 data=18/11`
+- **AND** 18/11/2026 não tem rota
+- **WHEN** ele é executado
+- **THEN** o grupo de controle recebe somente essa manutenção
+- **AND** nenhuma mensagem vai ao grupo de origem
+
+### Requirement: PNR
+
+**Tipo**: Requisito funcional
+
+O comando `/pnr` SHALL ser lançado no grupo de controle quando o administrador receber o faturamento da ALC. SHALL descontar o valor na quinzena desse faturamento. Cada comando soma um desconto. MUST NOT ler PNR na escala diária nem alterar o valor de cada rota. Quinzena já fechada SHALL gerar nova versão do demonstrativo.
+
+#### Scenario: Desconto da quinzena aberta
+
+- **GIVEN** o comando autorizado "/pnr 30,00" no grupo de controle
+- **AND** a quinzena de 16/11/2026 a 30/11/2026 está aberta e as rotas somam R$ 100,00
+- **WHEN** ele é executado
+- **THEN** a quinzena passa a ter R$ 30,00 de PNR
+- **AND** o total a receber do Douglas fica R$ 70,00
+
+#### Scenario: Faturamento da ALC depois do fechamento
+
+- **GIVEN** a quinzena já fechada com total de R$ 100,00 e PNR zero
+- **WHEN** o administrador recebe o faturamento da ALC e envia "/pnr 30,00" no grupo de controle
+- **THEN** o total revisado fica R$ 70,00
+- **AND** a versão anterior não é somada à nova
+
 ### Requirement: Resolução da data
 
 **Tipo**: Regra de negócio
