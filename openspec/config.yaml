@@ -1,0 +1,25 @@
+schema: spec-driven
+
+context: |
+  Language: português do Brasil
+  All artifacts must be written in português do Brasil.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Projeto: Frota Plus, gestão operacional e financeira de Fiorinos via WhatsApp.
+  As specs em openspec/specs são o contrato de comportamento. Não implementar o sistema antes da aprovação explícita dessas specs.
+  Não inventar distância, parada, motorista, data, cidade ou valor financeiro ausente.
+  PostgreSQL é a fonte oficial. A memória do modelo de IA não é fonte oficial.
+  O agente interpreta e pede ações. O backend valida, calcula, persiste e autoriza.
+  O pagamento do motorista usa somente rota completa e rota compartilhada.
+  A remuneração por paradas é indicador operacional e não entra nesse pagamento.
+  Não misturar faturamento da operação com pagamento do motorista.
+  Fuso obrigatório dos fatos de negócio e do agendamento: America/Sao_Paulo.
+  Valores monetários em decimal, nunca float. Moeda: BRL.
+  Nomes de motoristas, códigos de rota, grupos e telefones são dados configuráveis, não literais de regra.
+
+rules:
+  specs:
+    - Cada requisito usa SHALL ou MUST no corpo, com no máximo 500 caracteres antes do primeiro cenário.
+    - Todo requisito tem ao menos um cenário com GIVEN ou WHEN e THEN.
+    - Cenários usam exatamente quatro hashtags.
+    - Classificar o requisito com a linha de metadado **Tipo**.
+    - Não usar cabeçalhos de delta (ADDED, MODIFIED, REMOVED, RENAMED) nas specs oficiais.

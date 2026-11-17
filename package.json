@@ -1,0 +1,13 @@
+{
+  "name": "frota-plus",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gestão operacional e financeira da frota Fiorino. Fase 1: especificações OpenSpec; sem implementação de sistema.",
+  "scripts": {
+    "openspec": "openspec",
+    "openspec:validate": "openspec validate --specs --strict --no-interactive"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "2.1.0"
+  }
+}
