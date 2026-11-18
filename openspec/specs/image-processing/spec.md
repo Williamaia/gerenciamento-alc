@@ -185,6 +185,21 @@ O sistema SHALL tratar as três imagens em docs/referencias como exemplos inicia
 - **THEN** essa linha não cria rota nem pagamento para o Douglas
 - **AND** o texto "ambulância" não é tratado como código de rota
 
+### Requirement: Ambulância em apoio
+
+**Tipo**: Regra de negócio
+
+Linha em vermelho no formato "Fulano apoiar rota" SHALL ser tratada como ambulância. Outra pessoa leva pacotes grandes que não couberam no veículo e recebe a rota dela. O motorista monitorado SHALL receber a própria rota completa. MUST NOT ganhar rota extra nem virar compartilhada por causa do apoio.
+
+#### Scenario: Apoio não muda a rota do Douglas
+
+- **GIVEN** Douglas sozinho na C25_PM1 em 18/11/2026
+- **AND** as cidades Abatiá, Ribeirão do Pinhal, Jundiaí do Sul, Nova Fátima e Congonhinhas
+- **AND** linhas vermelhas de Leopoldo e Gabriel Sousa apoiando a rota do Douglas
+- **WHEN** a leitura é confirmada
+- **THEN** Douglas tem uma rota completa C25_PM1 com essas cinco cidades
+- **AND** as linhas de apoio não geram rota nem compartilhada para ele
+
 ### Requirement: Imagem ruim
 
 **Tipo**: Exceção

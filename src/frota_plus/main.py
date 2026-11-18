@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from frota_plus.config import Settings, get_settings
+from frota_plus.confirmed import apply_confirmed_days
 from frota_plus.interpreter import OpenAIInterpreter
 from frota_plus.outbound import EvolutionOutbound, Outbound
 from frota_plus.schedule import run_schedule
@@ -21,6 +22,7 @@ def create_app(
     outbound: Outbound | None = None,
     interpreter=None,
     store: Store | None = None,
+    remember_confirmed: bool = False,
 ) -> FastAPI:
     current = settings or get_settings()
 
@@ -40,6 +42,8 @@ def create_app(
         current.evolution_instance,
     )
     app.state.interpreter = interpreter or OpenAIInterpreter(current.ai_api_key, current.ai_model)
+    if remember_confirmed:
+        apply_confirmed_days(app.state.store, current.fuel_default)
     app.state.service = DailyService(
         current,
         app.state.store,
@@ -62,4 +66,4 @@ def create_app(
     return app
 
 
-app = create_app()
+app = create_app(remember_confirmed=True)

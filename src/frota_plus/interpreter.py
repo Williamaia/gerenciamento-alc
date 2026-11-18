@@ -24,8 +24,12 @@ class OpenAIInterpreter:
         encoded = base64.b64encode(image_jpeg).decode("ascii")
         prompt = (
             "Leia a tabela da escala. Responda só JSON com as chaves confident e routes. "
-            f"routes contém apenas as linhas em que o nome {driver_name} aparece. "
-            "Cada rota tem code, cities (lista) e shared (true se o nome está com outra pessoa). "
+            f"routes contém apenas as linhas em que o nome {driver_name} está na coluna do motorista. "
+            "Cada rota tem code, cities (lista) e shared. "
+            "shared=true somente quando o nome está na mesma célula que outra pessoa. "
+            "Cidades nas linhas seguintes, sem outro motorista e sem outro código, pertencem a essa mesma rota. "
+            "Texto em vermelho no formato 'Fulano apoiar rota' é ambulância: outra pessoa leva pacotes que não couberam. "
+            "Não crie rota por causa dessa linha e não marque a rota do motorista como compartilhada. "
             "Se a imagem estiver ruim, confident=false e routes=[]. Não chute código, cidade nem nome."
         )
         body = {

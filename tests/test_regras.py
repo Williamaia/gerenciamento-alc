@@ -4,6 +4,7 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 
 from frota_plus.commands import FuelCommand, MaintenanceCommand, PnrCommand, parse_command
+from frota_plus.confirmed import apply_confirmed_days
 from frota_plus.config import Settings
 from frota_plus.domain.dates import SAO_PAULO, read_operation_date
 from frota_plus.domain.distance import normalize_city
@@ -88,6 +89,31 @@ def test_data_nao_depende_da_frase() -> None:
     assert other.operation == date(2026, 11, 18)
     assert other.needs_confirmation is False
     assert read_operation_date("sem data aqui", received).needs_confirmation is True
+
+
+def test_escala_confirmada_de_18_11_e_uma_rota_completa() -> None:
+    store = Store(None)
+    apply_confirmed_days(store, Decimal("90"))
+    record = store.day(date(2026, 11, 18))
+    assert record is not None
+    assert record["routes"] == [
+        {
+            "code": "C25_PM1",
+            "cities": [
+                "Abatiá",
+                "Ribeirão do Pinhal",
+                "Jundiaí do Sul",
+                "Nova Fátima",
+                "Congonhinhas",
+            ],
+            "shared": False,
+        }
+    ]
+    assert driver_pay(1, 0) == Decimal("100.00")
+    record["stops"] = 10
+    store.put_day(date(2026, 11, 18), record)
+    apply_confirmed_days(store, Decimal("90"))
+    assert store.day(date(2026, 11, 18))["stops"] == 10
 
 
 def test_comandos() -> None:
