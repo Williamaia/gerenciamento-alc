@@ -51,6 +51,7 @@ class Store:
                     "routes": [],
                     "stops": None,
                     "stops_asked": False,
+                    "stops_reminded": False,
                     "fuel": str(fuel),
                     "maintenance": [],
                     "training": True,

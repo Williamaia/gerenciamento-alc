@@ -1,10 +1,13 @@
 """Serviço HTTP do Frota Plus."""
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+
+logger = logging.getLogger("frota_plus")
 
 from frota_plus.config import Settings, get_settings
 from frota_plus.confirmed import apply_confirmed_days
@@ -28,6 +31,11 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        if remember_confirmed:
+            try:
+                app.state.service.refresh_pending_routes()
+            except Exception:
+                logger.exception("recalculo_da_rota")
         task = asyncio.create_task(run_schedule(app))
         yield
         task.cancel()

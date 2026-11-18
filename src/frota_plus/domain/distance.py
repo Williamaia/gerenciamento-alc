@@ -1,9 +1,11 @@
-"""Distâncias de ida e volta já conferidas, a partir de Santo Antônio da Platina."""
+"""Distância do caminho: ida até a última cidade e volta só de lá."""
 
 import unicodedata
 from decimal import Decimal
 
-# Quilometragem rodoviária entre as sedes. A volta fica explícita, mesmo quando igual.
+SHED = "Santo Antônio da Platina"
+
+# Ida e volta já conferidas entre o barracão e a cidade. Não vale para o trecho entre duas cidades.
 ONE_WAY_KM: dict[str, tuple[Decimal, Decimal]] = {
     "congonhinhas": (Decimal("73"), Decimal("73")),
 }
@@ -14,26 +16,39 @@ def normalize_city(name: str) -> str:
     return "".join(char for char in decomposed if unicodedata.category(char) != "Mn")
 
 
-def known_leg(city: str) -> tuple[Decimal, Decimal] | None:
-    return ONE_WAY_KM.get(normalize_city(city))
+def known_between(start: str, end: str) -> Decimal | None:
+    start_key = normalize_city(start)
+    end_key = normalize_city(end)
+    shed = normalize_city(SHED)
+    if start_key == shed:
+        pair = ONE_WAY_KM.get(end_key)
+        return pair[0] if pair else None
+    if end_key == shed:
+        pair = ONE_WAY_KM.get(start_key)
+        return pair[1] if pair else None
+    return None
 
 
-def sum_round_trips(routes: list[dict], leg_for) -> tuple[Decimal, Decimal] | None:
-    """Soma a ida e a volta de cada cidade, em cada rota. Uma cidade sem km deixa o dia pendente."""
+def route_distance(routes: list[dict], km_between) -> tuple[Decimal, Decimal] | None:
+    """Ida na ordem da escala e volta só da última cidade. Um trecho faltante deixa o dia pendente."""
     outbound = Decimal("0")
     inbound = Decimal("0")
     found = False
     for route in routes:
-        cities = route.get("cities") or []
+        cities = [str(city).strip() for city in route.get("cities") or [] if str(city).strip()]
         if not cities:
             return None
-        for city in cities:
-            leg = leg_for(city)
+        points = [SHED, *cities]
+        for start, end in zip(points, points[1:]):
+            leg = km_between(start, end)
             if leg is None:
                 return None
+            outbound += leg
             found = True
-            outbound += leg[0]
-            inbound += leg[1]
+        back = km_between(cities[-1], SHED)
+        if back is None:
+            return None
+        inbound += back
     if not found:
         return None
     return outbound, inbound

@@ -19,11 +19,11 @@ A conta é trevo a trevo. Centro urbano, mapa externo e estimativa não completa
 
 ## Requirements
 
-### Requirement: Fórmula trevo a trevo
+### Requirement: Fórmula do caminho
 
 **Tipo**: Regra de negócio
 
-O sistema SHALL calcular a rota como ida do barracão ao trevo da primeira cidade, mais os trechos entre os trevos na sequência, mais o retorno do último trevo ao barracão. MUST NOT usar distância entre centros urbanos.
+O sistema SHALL calcular a rota como a ida do barracão até a primeira cidade, mais o trecho de cada cidade até a seguinte, na ordem da escala, mais a volta somente da última cidade ao barracão. MUST NOT somar ida e volta de cada cidade.
 
 #### Scenario: Soma dos trechos cadastrados
 
@@ -37,6 +37,14 @@ O sistema SHALL calcular a rota como ida do barracão ao trevo da primeira cidad
 - **GIVEN** trechos oficiais de ida 8,00 km, primeiro intervalo 3,00 km, segundo intervalo 2,00 km e retorno 9,00 km
 - **WHEN** a rota é calculada
 - **THEN** o total oficial é 22,00 km
+
+#### Scenario: Volta só da última cidade
+
+- **GIVEN** a rota na ordem Abatiá, Ribeirão do Pinhal, Jundiaí do Sul, Nova Fátima e Congonhinhas
+- **WHEN** a quilometragem é calculada
+- **THEN** a ida soma o barracão até Abatiá e cada cidade até a próxima
+- **AND** a volta é só de Congonhinhas ao barracão
+- **AND** as cidades do meio não geram volta ao barracão
 
 ### Requirement: Distância cadastrada e reutilizável
 

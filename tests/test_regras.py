@@ -12,6 +12,7 @@ from frota_plus.domain.money import day_profit, driver_pay, freight_for_km, stop
 from frota_plus.routing import DistanceBook
 from frota_plus.main import create_app
 from frota_plus.outbound import RecordingOutbound
+from frota_plus.reports import stops_reminder, stops_request
 from frota_plus.store import Store
 
 SECRET = "segredo-de-teste"
@@ -60,13 +61,15 @@ def test_faixas_de_parada_e_frete() -> None:
     assert day_profit(Decimal("277.25"), Decimal("100"), Decimal("90"), Decimal("0")) == Decimal("87.25")
 
 
-def test_soma_km_de_cada_cidade() -> None:
-    def fetch(city: str):
+def test_caminho_volta_so_da_ultima_cidade() -> None:
+    def fetch(start: str, end: str):
         table = {
-            "jacarezinho": (Decimal("26"), Decimal("27")),
-            "andira": (Decimal("38"), Decimal("40")),
+            ("congonhinhas", "jacarezinho"): Decimal("30"),
+            ("jacarezinho", "santo antonio da platina"): Decimal("27"),
+            ("santo antonio da platina", "andira"): Decimal("38"),
+            ("andira", "santo antonio da platina"): Decimal("40"),
         }
-        return table.get(normalize_city(city))
+        return table.get((normalize_city(start), normalize_city(end)))
 
     book = DistanceBook(Store(None), fetch)
     distance = book.for_routes(
@@ -75,7 +78,9 @@ def test_soma_km_de_cada_cidade() -> None:
             {"cities": ["Andirá"]},
         ]
     )
-    assert distance == (Decimal("137"), Decimal("140"))
+    assert distance == (Decimal("141"), Decimal("67"))
+    alone = book.for_routes([{"cities": ["Congonhinhas"]}])
+    assert alone == (Decimal("73"), Decimal("73"))
     missing = book.for_routes([{"cities": ["Cidade Que Nao Existe"]}])
     assert missing is None
 
@@ -110,10 +115,18 @@ def test_escala_confirmada_de_18_11_e_uma_rota_completa() -> None:
         }
     ]
     assert driver_pay(1, 0) == Decimal("100.00")
+    assert record["stops"] == 30
+    assert record["stops_asked"] is True
     record["stops"] = 10
+    record["km_ida"] = "120"
+    record["km_volta"] = "73"
+    record["km_method"] = "chain"
     store.put_day(date(2026, 11, 18), record)
     apply_confirmed_days(store, Decimal("90"))
-    assert store.day(date(2026, 11, 18))["stops"] == 10
+    kept = store.day(date(2026, 11, 18))
+    assert kept["stops"] == 10
+    assert kept["km_ida"] == "120"
+    assert kept["km_volta"] == "73"
 
 
 def test_comandos() -> None:
@@ -217,3 +230,83 @@ def test_fechamento_da_quinzena_envia_os_dois_relatorios() -> None:
     assert "30/11 · sem rota" in douglas
     assert "*Total a receber · R$ 100,00*" in douglas
     assert "*Lucro da quinzena · R$ 87,25*" in fiorino
+
+
+def test_pedido_de_paradas_e_formal() -> None:
+    text = stops_request([{"code": "C25_PM1"}, {"code": "C21_PM1"}])
+    assert "Olá. Sou o agente da Frota Plus." in text
+    assert "Por favor, informe a quantidade de paradas das seguintes rotas:" in text
+    assert "C25_PM1\nC21_PM1" in text
+    assert "Informe somente a quantidade de paradas." in text
+    assert "Não é necessário informar a quantidade de pacotes." in text
+
+
+def test_lembrete_repete_as_rotas() -> None:
+    text = stops_reminder([{"code": "C25_PM1"}, {"code": "C21_PM1"}])
+    assert "Olá. Sou o agente da Frota Plus." in text
+    assert "Ainda não recebi a quantidade de paradas das seguintes rotas:" in text
+    assert "C25_PM1\nC21_PM1" in text
+    assert "Informe somente a quantidade de paradas." in text
+    assert "Não é necessário informar a quantidade de pacotes." in text
+
+
+def _dia_com_rotas(store: Store) -> None:
+    record = store.ensure_day(date(2026, 11, 18), Decimal("90"))
+    record["routes"] = [
+        {"code": "C25_PM1", "cities": ["Abatiá"], "shared": False},
+        {"code": "C21_PM1", "cities": ["Andirá"], "shared": False},
+    ]
+    record["stops_asked"] = True
+    store.put_day(date(2026, 11, 18), record)
+
+
+def test_lembrete_as_10_sai_uma_vez() -> None:
+    store = Store(None)
+    outbound = RecordingOutbound()
+    app = client_for(store, outbound)
+    _dia_com_rotas(store)
+    service = app.app.state.service
+    service.tick(datetime(2026, 11, 18, 10, 0, tzinfo=SAO_PAULO))
+    service.tick(datetime(2026, 11, 18, 10, 30, tzinfo=SAO_PAULO))
+    assert [item[0] for item in outbound.sent] == [DRIVER]
+    assert "Ainda não recebi a quantidade de paradas das seguintes rotas:" in outbound.sent[0][1]
+    assert CONTROL not in [item[0] for item in outbound.sent]
+
+
+def test_lembrete_nao_sai_depois_da_resposta_nem_repete_conversa() -> None:
+    store = Store(None)
+    outbound = RecordingOutbound()
+    app = client_for(store, outbound)
+    _dia_com_rotas(store)
+    record = store.day(date(2026, 11, 18))
+    assert record is not None
+    record["stops"] = 30
+    store.put_day(date(2026, 11, 18), record)
+    service = app.app.state.service
+    service.tick(datetime(2026, 11, 18, 10, 0, tzinfo=SAO_PAULO))
+    assert outbound.sent == []
+
+    record["stops"] = None
+    record["stops_reminded"] = True
+    store.put_day(date(2026, 11, 18), record)
+    service.tick(datetime(2026, 11, 18, 11, 0, tzinfo=SAO_PAULO))
+    service.handle(
+        {
+            "event": "messages.upsert",
+            "data": {
+                "key": {"remoteJid": f"{DRIVER}@s.whatsapp.net", "fromMe": False, "id": "D3"},
+                "message": {"conversation": "pode repetir os pacotes?"},
+            },
+        },
+        now=datetime(2026, 11, 18, 11, 5, tzinfo=SAO_PAULO),
+    )
+    assert outbound.sent == []
+
+
+def test_dia_seguinte_nao_cobra_paradas() -> None:
+    store = Store(None)
+    outbound = RecordingOutbound()
+    app = client_for(store, outbound)
+    _dia_com_rotas(store)
+    app.app.state.service.tick(datetime(2026, 11, 19, 10, 0, tzinfo=SAO_PAULO))
+    assert outbound.sent == []

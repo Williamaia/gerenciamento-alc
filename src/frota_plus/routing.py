@@ -1,19 +1,19 @@
-"""Quilometragem rodoviária a partir de Santo Antônio da Platina.
+"""Quilometragem rodoviária na ordem da escala.
 
-A ida e a volta são consultadas separadas. O resultado fica guardado para não mudar sozinho.
+A ida segue de cidade em cidade. A volta sai só da última. O trecho medido fica guardado.
 """
 
 import json
 import logging
+import time
 import urllib.parse
 import urllib.request
 from decimal import Decimal, ROUND_HALF_UP
 
-from frota_plus.domain.distance import known_leg, normalize_city, sum_round_trips
+from frota_plus.domain.distance import SHED, known_between, normalize_city, route_distance
 from frota_plus.store import Store
 
 logger = logging.getLogger("frota_plus.routing")
-ORIGIN = "Santo Antônio da Platina, Paraná, Brasil"
 USER_AGENT = "FrotaPlus/0.1 (gerenciamento operacional)"
 
 
@@ -23,43 +23,51 @@ class DistanceBook:
         self.fetch = fetch
 
     def for_routes(self, routes: list[dict]) -> tuple[Decimal, Decimal] | None:
-        return sum_round_trips(routes, self.leg)
+        return route_distance(routes, self.between)
 
-    def leg(self, city: str) -> tuple[Decimal, Decimal] | None:
-        known = known_leg(city)
+    def between(self, start: str, end: str) -> Decimal | None:
+        known = known_between(start, end)
         if known is not None:
             return known
-        key = normalize_city(city)
+        key = f"{normalize_city(start)}>{normalize_city(end)}"
         cached = self.store.distances.get(key)
-        if isinstance(cached, dict) and cached.get("ida") and cached.get("volta"):
-            return Decimal(cached["ida"]), Decimal(cached["volta"])
+        if isinstance(cached, dict) and cached.get("km"):
+            return Decimal(cached["km"])
         if self.fetch is None:
             return None
         try:
-            found = self.fetch(city)
+            found = self.fetch(start, end)
         except Exception:
             logger.info("km_nao_encontrado")
             return None
         if found is None:
             return None
-        self.store.distances[key] = {"ida": str(found[0]), "volta": str(found[1])}
+        self.store.distances[key] = {"km": str(found)}
         self.store.save()
         return found
 
 
-def fetch_road_leg(city: str) -> tuple[Decimal, Decimal] | None:
-    origin = _geocode(ORIGIN)
-    destination = _geocode(f"{city}, Paraná, Brasil")
+def fetch_road_leg(start: str, end: str) -> Decimal | None:
+    origin = _geocode(_place(start))
+    destination = _geocode(_place(end))
     if origin is None or destination is None:
         return None
-    outbound = _drive_km(origin, destination)
-    inbound = _drive_km(destination, origin)
-    if outbound is None or inbound is None:
-        return None
-    return outbound, inbound
+    return _drive_km(origin, destination)
+
+
+def _place(name: str) -> str:
+    if normalize_city(name) == normalize_city(SHED):
+        return f"{SHED}, Paraná, Brasil"
+    return f"{name}, Paraná, Brasil"
+
+
+_GEOCODE_CACHE: dict[str, tuple[str, str] | None] = {}
 
 
 def _geocode(query: str) -> tuple[str, str] | None:
+    if query in _GEOCODE_CACHE:
+        return _GEOCODE_CACHE[query]
+    time.sleep(1.1)
     params = urllib.parse.urlencode({"q": query, "format": "jsonv2", "limit": "1"})
     call = urllib.request.Request(
         f"https://nominatim.openstreetmap.org/search?{params}",
@@ -70,10 +78,14 @@ def _geocode(query: str) -> tuple[str, str] | None:
             payload = json.loads(response.read().decode())
     except Exception:
         logger.info("geocode_falhou")
+        _GEOCODE_CACHE[query] = None
         return None
     if not payload:
+        _GEOCODE_CACHE[query] = None
         return None
-    return str(payload[0]["lat"]), str(payload[0]["lon"])
+    point = (str(payload[0]["lat"]), str(payload[0]["lon"]))
+    _GEOCODE_CACHE[query] = point
+    return point
 
 
 def _drive_km(start: tuple[str, str], end: tuple[str, str]) -> Decimal | None:

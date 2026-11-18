@@ -69,9 +69,32 @@ def daily_parecer(
     return "\n".join(lines)
 
 
+def _route_codes(routes: list[dict]) -> str:
+    return "\n".join(route["code"] for route in routes)
+
+
 def stops_request(routes: list[dict]) -> str:
-    codes = "\n".join(route["code"] for route in routes)
-    return f"frota-plus-agent\nQuantas paradas em cada rota?\n{codes}"
+    return "\n".join(
+        [
+            "Olá. Sou o agente da Frota Plus.",
+            "Por favor, informe a quantidade de paradas das seguintes rotas:",
+            _route_codes(routes),
+            "",
+            "Informe somente a quantidade de paradas. Não é necessário informar a quantidade de pacotes.",
+        ]
+    )
+
+
+def stops_reminder(routes: list[dict]) -> str:
+    return "\n".join(
+        [
+            "Olá. Sou o agente da Frota Plus.",
+            "Ainda não recebi a quantidade de paradas das seguintes rotas:",
+            _route_codes(routes),
+            "",
+            "Informe somente a quantidade de paradas. Não é necessário informar a quantidade de pacotes.",
+        ]
+    )
 
 
 def maintenance_only(operation: date, description: str, amount: Decimal) -> str:

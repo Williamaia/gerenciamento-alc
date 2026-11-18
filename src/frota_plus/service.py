@@ -19,6 +19,7 @@ from frota_plus.reports import (
     maintenance_only,
     quinzena_driver,
     quinzena_fiorino,
+    stops_reminder,
     stops_request,
     unreadable_scale,
 )
@@ -62,14 +63,18 @@ class DailyService:
             return
         self._close_due(local)
         for key, record in list(self.store.days.items()):
-            if record.get("stops") is not None or record.get("stops_asked") or record.get("awaiting_read"):
+            if record.get("stops") is not None or record.get("awaiting_read"):
                 continue
             if not record.get("routes"):
                 continue
             operation = date.fromisoformat(key)
             if operation != local.date():
                 continue
-            self._ask_stops(operation, record)
+            if not record.get("stops_asked"):
+                self._ask_stops(operation, record)
+                continue
+            if local.hour >= 10 and not record.get("stops_reminded"):
+                self._remind_stops(operation, record)
 
     def _scale(self, data: dict, moment: datetime) -> None:
         text = self._text(data)
@@ -141,9 +146,12 @@ class DailyService:
             return None
         record["km_ida"] = str(distance[0])
         record["km_volta"] = str(distance[1])
+        record["km_method"] = "chain"
         return distance
 
     def _stored_distance(self, record: dict) -> tuple[Decimal, Decimal] | None:
+        if record.get("km_method") == "pending-chain":
+            return None
         outbound = record.get("km_ida")
         inbound = record.get("km_volta")
         if not outbound or not inbound:
@@ -172,6 +180,16 @@ class DailyService:
         if not message_id:
             return
         record["stops_asked"] = True
+        self.store.put_day(operation, record)
+
+    def _remind_stops(self, operation: date, record: dict) -> None:
+        number = self.settings.whatsapp_driver_number.strip()
+        if not number or record.get("stops_reminded"):
+            return
+        message_id = self.outbound.send_text(number, stops_reminder(record["routes"]))
+        if not message_id:
+            return
+        record["stops_reminded"] = True
         self.store.put_day(operation, record)
 
     def _capture_stops(self, text: str, moment: datetime) -> None:
@@ -274,8 +292,17 @@ class DailyService:
         )
         if message_id:
             self.outbound.edit_text(control, message_id, text)
+            self.store.put_day(operation, record)
         else:
             self._publish(operation, record)
+
+    def refresh_pending_routes(self) -> None:
+        for key, record in list(self.store.days.items()):
+            if record.get("km_method") != "pending-chain":
+                continue
+            if record.get("stops") is None or not record.get("routes"):
+                continue
+            self._republish(date.fromisoformat(key), record)
 
     def _period_days(self, start: date, end: date) -> list[tuple[date, dict | None]]:
         days: list[tuple[date, dict | None]] = []

@@ -1,0 +1,14 @@
+---
+description: Correção de comportamento começa pela spec OpenSpec, antes de qualquer código.
+alwaysApply: true
+---
+
+# Spec antes do bug fix
+
+Antes de corrigir comportamento, escreva a spec. Não altere `src/` nem testes nesse momento.
+
+1. Crie um change OpenSpec de bug fix, no schema `spec-driven`: proposal, delta em `specs/<capacidade>/spec.md`, design e tasks.
+2. A delta diz o comportamento novo, com SHALL ou MUST e pelo menos um cenário.
+3. Pare e mostre a spec. O código só muda depois que o usuário pedir para aplicar.
+
+A spec oficial em `openspec/specs` descreve o contrato. A correção no código tem de cumprir essa spec, sem regra nova inventada na implementação.
