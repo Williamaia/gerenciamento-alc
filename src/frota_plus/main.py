@@ -16,6 +16,7 @@ from frota_plus.outbound import EvolutionOutbound, Outbound
 from frota_plus.schedule import run_schedule
 from frota_plus.service import DailyService
 from frota_plus.store import Store
+from frota_plus.webhooks.escala import register_manual_scale
 from frota_plus.webhooks.evolution import WEBHOOK_PATH, register_evolution_webhook
 
 
@@ -69,6 +70,7 @@ def create_app(
         }
 
     register_evolution_webhook(app)
+    register_manual_scale(app)
     if WEBHOOK_PATH != current.webhook_path:
         raise RuntimeError("O caminho do webhook divergiu da configuração.")
     return app

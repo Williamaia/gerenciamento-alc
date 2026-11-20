@@ -102,6 +102,35 @@ class DailyService:
         if moment.astimezone(SAO_PAULO).hour >= 8:
             self._ask_stops(operation, record)
 
+    def register_manual_scale(self, payload: dict, now: datetime) -> tuple[int, dict]:
+        received = sao_paulo_today(now)
+        operation, routes = _manual_scale(payload, received)
+        if operation is None or routes is None:
+            return 400, {"error": "invalid_body"}
+        current = self.store.day(operation)
+        if current is not None and current.get("stops") is not None:
+            return 409, {"error": "stops_already_recorded"}
+        record = self.store.ensure_day(operation, self.settings.fuel_default)
+        previous = list(record.get("routes") or [])
+        if _route_codes(previous) != _route_codes(routes):
+            record["stops_asked"] = False
+            record["stops_reminded"] = False
+        if previous != routes:
+            record["km_ida"] = None
+            record["km_volta"] = None
+            record.pop("km_method", None)
+        record["routes"] = routes
+        record["stops"] = None
+        record["awaiting_read"] = False
+        self.store.put_day(operation, record)
+        local = now.astimezone(SAO_PAULO)
+        sent = False
+        if operation == local.date() and local.hour >= 8 and not record.get("stops_asked"):
+            self._ask_stops(operation, record)
+            sent = bool(record.get("stops_asked"))
+        logger.info("escala_manual data=%s rotas=%s pedido=%s", operation.isoformat(), len(routes), sent)
+        return 200, {"accepted": True, "pedidoEnviado": sent}
+
     def _close_due(self, local: datetime) -> None:
         if local.hour < 17:
             return
@@ -381,3 +410,41 @@ def period_bounds(day: date) -> tuple[date, date]:
 def _is_upsert(name: str) -> bool:
     compact = name.lower().replace(".", "").replace("_", "")
     return compact in {"messagesupsert", ""}
+
+
+def _route_codes(routes: list[dict]) -> list[str]:
+    return [str(route.get("code") or "") for route in routes]
+
+
+def _manual_scale(payload: dict, received: date) -> tuple[date | None, list[dict] | None]:
+    raw_date = payload.get("data")
+    if not isinstance(raw_date, str) or not raw_date.strip():
+        return None, None
+    read = read_operation_date(raw_date.strip(), received)
+    if read.operation is None or read.needs_confirmation:
+        return None, None
+    raw_routes = payload.get("rotas")
+    if not isinstance(raw_routes, list) or not raw_routes:
+        return None, None
+    routes: list[dict] = []
+    for item in raw_routes:
+        if not isinstance(item, dict):
+            return None, None
+        code = item.get("codigo")
+        cities = item.get("cidades")
+        if not isinstance(code, str) or not code.strip():
+            return None, None
+        if not isinstance(cities, list) or not cities:
+            return None, None
+        if any(not isinstance(city, str) or not city.strip() for city in cities):
+            return None, None
+        if "compartilhada" in item and not isinstance(item["compartilhada"], bool):
+            return None, None
+        routes.append(
+            {
+                "code": code.strip(),
+                "cities": [city.strip() for city in cities],
+                "shared": bool(item.get("compartilhada", False)),
+            }
+        )
+    return read.operation, routes
