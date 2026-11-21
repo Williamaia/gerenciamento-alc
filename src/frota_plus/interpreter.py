@@ -20,7 +20,8 @@ class OpenAIInterpreter:
 
     def read(self, caption: str, image_jpeg: bytes | None, driver_name: str) -> dict:
         if not self.api_key or not image_jpeg:
-            return {"confident": False, "routes": []}
+            logger.info("leitura_sem_arquivo")
+            return {"confident": False, "routes": [], "status": "unconfident"}
         encoded = base64.b64encode(image_jpeg).decode("ascii")
         prompt = (
             "Leia a tabela da escala. Responda só JSON com as chaves confident e routes. "
@@ -56,12 +57,13 @@ class OpenAIInterpreter:
                 payload = json.loads(response.read().decode())
         except Exception:
             logger.info("leitura_da_escala_falhou")
-            return {"confident": False, "routes": []}
+            return {"confident": False, "routes": [], "status": "error"}
         try:
             content = payload["choices"][0]["message"]["content"]
             parsed = json.loads(content)
         except (KeyError, IndexError, TypeError, json.JSONDecodeError):
-            return {"confident": False, "routes": []}
+            logger.info("leitura_sem_confianca")
+            return {"confident": False, "routes": [], "status": "unconfident"}
         routes = []
         for item in parsed.get("routes") or []:
             if not isinstance(item, dict) or not item.get("code"):
@@ -74,4 +76,10 @@ class OpenAIInterpreter:
                     "shared": bool(item.get("shared")),
                 }
             )
-        return {"confident": bool(parsed.get("confident")) and bool(routes), "routes": routes}
+        confident = bool(parsed.get("confident")) and bool(routes)
+        logger.info("leitura_ok" if confident else "leitura_sem_confianca")
+        return {
+            "confident": confident,
+            "routes": routes,
+            "status": "ok" if confident else "unconfident",
+        }

@@ -28,10 +28,12 @@ class DistanceBook:
     def between(self, start: str, end: str) -> Decimal | None:
         known = known_between(start, end)
         if known is not None:
+            logger.info("km_medido")
             return known
         key = f"{normalize_city(start)}>{normalize_city(end)}"
         cached = self.store.distances.get(key)
         if isinstance(cached, dict) and cached.get("km"):
+            logger.info("km_medido")
             return Decimal(cached["km"])
         if self.fetch is None:
             return None
@@ -41,7 +43,9 @@ class DistanceBook:
             logger.info("km_nao_encontrado")
             return None
         if found is None:
+            logger.info("km_nao_encontrado")
             return None
+        logger.info("km_medido")
         self.store.distances[key] = {"km": str(found)}
         self.store.save()
         return found

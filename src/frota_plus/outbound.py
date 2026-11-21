@@ -30,15 +30,18 @@ class RecordingOutbound:
 
 
 class EvolutionOutbound:
-    def __init__(self, base_url: str, api_key: str, instance: str) -> None:
+    def __init__(self, base_url: str, api_key: str, instance: str, on_http_error=None) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.instance = instance
+        self.on_http_error = on_http_error
+        self._reporting = False
 
     def send_text(self, number: str, text: str) -> str | None:
         if not self.base_url or not self.api_key or not self.instance:
             logger.info("envio_ignorado destino_sem_api")
             return None
+        logger.info("envio_texto")
         payload = self._request(
             "POST",
             f"/message/sendText/{self.instance}",
@@ -93,4 +96,14 @@ class EvolutionOutbound:
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as error:
             logger.info("evolution_http status=%s path=%s", error.code, path)
+            self._report_http_error(error.code, path)
             return {}
+
+    def _report_http_error(self, status: int, path: str) -> None:
+        if self._reporting or self.on_http_error is None:
+            return
+        self._reporting = True
+        try:
+            self.on_http_error(status, path)
+        finally:
+            self._reporting = False

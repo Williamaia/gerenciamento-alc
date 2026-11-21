@@ -59,6 +59,9 @@ def create_app(
         app.state.outbound,
         app.state.interpreter,
     )
+    hook = getattr(app.state.outbound, "on_http_error", None)
+    if hook is None and hasattr(app.state.outbound, "on_http_error"):
+        app.state.outbound.on_http_error = app.state.service.report_send_failure
 
     @app.get("/health")
     def health() -> dict[str, str | bool]:

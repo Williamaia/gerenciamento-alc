@@ -183,6 +183,126 @@ def quinzena_fiorino(
     return "\n".join(lines)
 
 
+def help_text() -> str:
+    return "\n".join(
+        [
+            "*Frota Plus*",
+            "Comandos aceitos. Os valores são calculados pelo sistema.",
+            "",
+            "/ajustar combustivel=VALOR",
+            "data=d/m é opcional.",
+            "",
+            '/manutencao "descrição" VALOR',
+            "data=d/m é opcional.",
+            "",
+            "/pnr VALOR",
+            "data=d/m é opcional.",
+            "",
+            "/retry",
+            "Baixa de novo a última escala que não foi gravada e lê do começo.",
+            "",
+            "/ajuda",
+        ]
+    )
+
+
+def retry_confirmed(operation: date, codes: list[str]) -> str:
+    return "\n".join(
+        [
+            "*Frota Plus*",
+            f"Escala de {operation.strftime('%d/%m/%Y')} lida.",
+            *codes,
+        ]
+    )
+
+
+def retry_nothing() -> str:
+    return "\n".join(["*Frota Plus*", "Não há foto de escala para tentar de novo."])
+
+
+def retry_stops_locked() -> str:
+    return "\n".join(["*Frota Plus*", "Esse dia já tem paradas. Nada foi alterado."])
+
+
+def _audit(success: bool, *lines: str) -> str:
+    title = "✅ Frota Plus" if success else "❌ Frota Plus"
+    return "\n".join([title, *lines])
+
+
+def audit_photo_read(operation: date, codes: list[str]) -> str:
+    return _audit(True, "A foto da escala foi lida.", operation.strftime("%d/%m/%Y"), *codes)
+
+
+def audit_download_failed() -> str:
+    return _audit(
+        False,
+        "A foto da escala não foi baixada.",
+        "Escreva /retry no grupo de controle para baixar e ler de novo.",
+    )
+
+
+def audit_reader_failed() -> str:
+    return _audit(
+        False,
+        "A leitura da escala não terminou.",
+        "Escreva /retry no grupo de controle para tentar de novo.",
+    )
+
+
+def audit_unconfident() -> str:
+    return _audit(
+        False,
+        "A foto não foi lida com segurança.",
+        "Escreva /retry no grupo de controle para baixar e ler do começo.",
+    )
+
+
+def audit_date_problem(detail: str) -> str:
+    return _audit(
+        False,
+        detail,
+        "O /retry não resolve.",
+        "Registre a escala no endpoint manual.",
+    )
+
+
+def audit_retry_unconfident() -> str:
+    return _audit(
+        False,
+        "A foto foi lida de novo sem confiança.",
+        "Outro /retry não é o caminho.",
+        "Registre a escala no endpoint manual.",
+    )
+
+
+def audit_stops_locked() -> str:
+    return _audit(
+        False,
+        "Esse dia já tem paradas informadas.",
+        "O /retry não altera o dia.",
+    )
+
+
+def audit_send_failed() -> str:
+    return _audit(
+        False,
+        "O envio da mensagem falhou.",
+        "O /retry não reenvia essa mensagem.",
+    )
+
+
+def audit_processing_failed() -> str:
+    return _audit(
+        False,
+        "O processamento do evento falhou.",
+        "O /retry não resolve esta falha.",
+    )
+
+
+def audit_done(line: str) -> str:
+    return _audit(True, line)
+
+
 def unreadable_scale() -> str:
     return "\n".join(
         [

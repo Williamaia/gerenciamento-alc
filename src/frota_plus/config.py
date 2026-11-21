@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     whatsapp_admin_numbers: str = ""
     whatsapp_origin_group_id: str = ""
     whatsapp_control_group_id: str = ""
+    whatsapp_audit_group_id: str = ""
     whatsapp_billing_number: str = ""
     whatsapp_driver_number: str = ""
     driver_name: str = "Douglas"

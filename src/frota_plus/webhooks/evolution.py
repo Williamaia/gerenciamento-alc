@@ -93,6 +93,12 @@ def register_evolution_webhook(app: FastAPI) -> None:
                 request.app.state.service.handle(payload)
             except Exception:
                 logger.exception("falha_ao_processar_evento")
+                report = getattr(request.app.state.service, "report_processing_failure", None)
+                if report is not None:
+                    try:
+                        report()
+                    except Exception:
+                        logger.exception("falha_ao_avisar_auditoria")
         return JSONResponse(
             status_code=200,
             content={"accepted": True, "duplicate": duplicate},

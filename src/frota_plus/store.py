@@ -15,6 +15,7 @@ class Store:
         self.pnrs: list[dict] = []
         self.closed_periods: list[str] = []
         self.distances: dict[str, dict] = {}
+        self.pending_scale: dict | None = None
         if path and path.exists():
             self._load(path)
 
@@ -24,6 +25,8 @@ class Store:
         self.pnrs = raw.get("pnrs", [])
         self.closed_periods = raw.get("closed_periods", [])
         self.distances = raw.get("distances", {})
+        pending = raw.get("pending_scale")
+        self.pending_scale = pending if isinstance(pending, dict) else None
 
     def save(self) -> None:
         if self.path is None:
@@ -34,6 +37,7 @@ class Store:
             "pnrs": self.pnrs,
             "closed_periods": self.closed_periods,
             "distances": self.distances,
+            "pending_scale": self.pending_scale,
         }
         temporary = self.path.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -71,6 +75,11 @@ class Store:
             key = period_start.isoformat()
             if key not in self.closed_periods:
                 self.closed_periods.append(key)
+            self.save()
+
+    def set_pending_scale(self, pending: dict | None) -> None:
+        with self._lock:
+            self.pending_scale = pending
             self.save()
 
     def add_pnr(self, period_start: date, amount: Decimal) -> None:
