@@ -31,6 +31,8 @@ class OpenAIInterpreter:
             "Cidades nas linhas seguintes, sem outro motorista e sem outro código, pertencem a essa mesma rota. "
             "Texto em vermelho no formato 'Fulano apoiar rota' é ambulância: outra pessoa leva pacotes que não couberam. "
             "Não crie rota por causa dessa linha e não marque a rota do motorista como compartilhada. "
+            "Se o nome não estiver na coluna do motorista, confident=true e routes=[]. "
+            "Não use o código de outra pessoa. "
             "Se a imagem estiver ruim, confident=false e routes=[]. Não chute código, cidade nem nome."
         )
         body = {
@@ -76,6 +78,9 @@ class OpenAIInterpreter:
                     "shared": bool(item.get("shared")),
                 }
             )
+        if bool(parsed.get("confident")) and not routes:
+            logger.info("leitura_sem_motorista")
+            return {"confident": True, "routes": [], "status": "absent"}
         confident = bool(parsed.get("confident")) and bool(routes)
         logger.info("leitura_ok" if confident else "leitura_sem_confianca")
         return {

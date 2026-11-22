@@ -10,7 +10,7 @@ from fastapi import FastAPI
 logger = logging.getLogger("frota_plus")
 
 from frota_plus.config import Settings, get_settings
-from frota_plus.confirmed import apply_confirmed_days
+from frota_plus.confirmed import apply_confirmed_days, drop_foreign_route
 from frota_plus.interpreter import OpenAIInterpreter
 from frota_plus.outbound import EvolutionOutbound, Outbound
 from frota_plus.schedule import run_schedule
@@ -53,6 +53,7 @@ def create_app(
     app.state.interpreter = interpreter or OpenAIInterpreter(current.ai_api_key, current.ai_model)
     if remember_confirmed:
         apply_confirmed_days(app.state.store, current.fuel_default)
+    drop_foreign_route(app.state.store)
     app.state.service = DailyService(
         current,
         app.state.store,

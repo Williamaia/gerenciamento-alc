@@ -446,6 +446,9 @@ class DailyService:
             self._tell_audit(audit_retry_unconfident() if from_retry else audit_unconfident())
             return
         routes = list(reading.get("routes") or [])
+        if status == "absent" or (reading.get("confident") and not routes):
+            self._store_absent(operation)
+            return
         record = self.store.ensure_day(operation, self.settings.fuel_default)
         record["routes"] = routes
         record["awaiting_read"] = False
@@ -456,8 +459,18 @@ class DailyService:
         if from_retry:
             self._tell_control(retry_confirmed(operation, codes))
         logger.info("leitura_gravada data=%s rotas=%s", operation.isoformat(), len(codes))
-        if moment.astimezone(SAO_PAULO).hour >= 8:
-            self._ask_stops(operation, record)
+
+    def _store_absent(self, operation: date) -> None:
+        record = self.store.ensure_day(operation, self.settings.fuel_default)
+        if record.get("stops") is None:
+            record["routes"] = []
+            record["stops_asked"] = False
+            record["stops_reminded"] = False
+        record["awaiting_read"] = False
+        self.store.put_day(operation, record)
+        self.store.set_pending_scale(None)
+        self._note_success("Foto lida. Motorista não escalado.")
+        logger.info("leitura_sem_motorista data=%s", operation.isoformat())
 
     def _keep_pending(self, data: dict, text: str) -> None:
         key = data.get("key") if isinstance(data.get("key"), dict) else {}

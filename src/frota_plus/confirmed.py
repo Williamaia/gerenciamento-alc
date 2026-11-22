@@ -43,3 +43,18 @@ def apply_confirmed_days(store: Store, fuel: Decimal) -> None:
             record["control_message_id"] = PUBLISHED_MESSAGE.get(operation)
         record["awaiting_read"] = False
         store.put_day(operation, record)
+
+
+def drop_foreign_route(store: Store) -> None:
+    """A leitura de 22/11 atribuiu a B25_PM1 a quem não estava na escala."""
+    operation = date(2026, 11, 22)
+    record = store.day(operation)
+    if not record or record.get("stops") is not None:
+        return
+    codes = [str(route.get("code") or "") for route in record.get("routes") or []]
+    if codes != ["B25_PM1"]:
+        return
+    record["routes"] = []
+    record["stops_asked"] = False
+    record["stops_reminded"] = False
+    store.put_day(operation, record)
