@@ -11,7 +11,7 @@ logger = logging.getLogger("frota_plus")
 
 from frota_plus.config import Settings, get_settings
 from frota_plus.confirmed import apply_confirmed_days, drop_foreign_route
-from frota_plus.interpreter import OpenAIInterpreter
+from frota_plus.scale_ocr import OcrScaleReader
 from frota_plus.outbound import EvolutionOutbound, Outbound
 from frota_plus.schedule import run_schedule
 from frota_plus.service import DailyService
@@ -50,7 +50,7 @@ def create_app(
         current.evolution_api_key,
         current.evolution_instance,
     )
-    app.state.interpreter = interpreter or OpenAIInterpreter(current.ai_api_key, current.ai_model)
+    app.state.interpreter = interpreter or OcrScaleReader()
     if remember_confirmed:
         apply_confirmed_days(app.state.store, current.fuel_default)
     drop_foreign_route(app.state.store)
